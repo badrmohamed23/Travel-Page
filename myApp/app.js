@@ -31,53 +31,62 @@ app.get('/', (req, res) => res.redirect('/login'));
 
 app.get('/login', (req, res) => {
   const msg = req.query.msg || null;
-  res.render('login', { error: null, msg });
+  res.render('login', { error: null, msg: msg });
 });
 
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
-    return res.render('login', { error: 'Invalid username or password.' });
+    return res.render('login', { error: 'Invalid username or password.', msg: null });
   }
 
   try {
     const user = await usersCol.findOne({ username });
 
     if (!user) {
-      return res.render('login', { error: 'Invalid username or password.' });
+      return res.render('login', { error: 'Invalid username or password.', msg: null });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
-      return res.render('login', { error: 'Invalid username or password.' });
+      return res.render('login', { error: 'Invalid username or password.', msg: null });
     }
 
     req.session.user = user;
     res.redirect('/home');
   } catch (error) {
     console.error(error);
-    res.render('login', { error: 'An error occurred during login.' });
+    res.render('login', { error: 'An error occurred during login.', msg: null });
   }
 });
 
 app.get('/registration', (req, res) => {
-  res.render('registration', { error: null });
+  res.render('registration', { error: null, msg: null });
 });
 
 app.post('/register', async (req, res) => {
   const { username, password } = req.body;
 
-  if (!username || !password) {
-    return res.render('registration', { error: 'Invalid username or password.' });
+  // Check for empty fields with specific error messages
+  if (!username && !password) {
+    return res.render('registration', { error: 'Username and password are required.', msg: null });
+  }
+
+  if (!username) {
+    return res.render('registration', { error: 'Username is required.', msg: null });
+  }
+
+  if (!password) {
+    return res.render('registration', { error: 'Password is required.', msg: null });
   }
 
   try {
     const user = await usersCol.findOne({ username });
 
     if (user) {
-      return res.render('registration', { error: 'Invalid username or password.' });
+      return res.render('registration', { error: 'This username is already taken. Please choose a different username.', msg: null });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -91,7 +100,7 @@ app.post('/register', async (req, res) => {
     res.redirect('/login?msg=Registration+successful');
   } catch (error) {
     console.error(error);
-    res.render('registration', { error: 'An error occurred during registration.' });
+    res.render('registration', { error: 'An error occurred during registration.', msg: null });
   }
 });
 
@@ -117,9 +126,9 @@ app.post('/search', ensureAuthenticated, (req, res) => {
   const destinations = [
     { name: 'Paris', url: '/paris' },
     { name: 'Rome', url: '/rome' },
-    { name: 'Bali', url: '/bali' },
-    { name: 'Santorini', url: '/santorini' },
-    { name: 'Inca Trail', url: '/inca' },
+    { name: 'Bali Island', url: '/bali' },
+    { name: 'Santorini Island', url: '/santorini' },
+    { name: 'Inca Trail to Machu Picchu', url: '/inca' },
     { name: 'Annapurna Circuit', url: '/annapurna' }
   ];
   const results = destinations.filter(dest => dest.name.toLowerCase().includes(term));
@@ -165,7 +174,9 @@ async function startServer() {
 
         if (user && user.wantToGo && user.wantToGo.includes(destination)) {
           const backURL = req.header('Referer') || '/';
-          return res.redirect(`${backURL}?err=Destination+already+in+your+list.`);
+          const urlObj = new URL(backURL, 'http://localhost:3000');
+          urlObj.search = '?err=Destination+already+in+your+list.';
+          return res.redirect(urlObj.pathname + urlObj.search);
         }
 
         await usersCol.updateOne(
@@ -174,12 +185,16 @@ async function startServer() {
         );
 
         const backURL = req.header('Referer') || '/';
-        res.redirect(`${backURL}?msg=Successfully+added+to+your+list.`);
+        const urlObj = new URL(backURL, 'http://localhost:3000');
+        urlObj.search = '?msg=Successfully+added+to+your+list.';
+        res.redirect(urlObj.pathname + urlObj.search);
 
       } catch (error) {
         console.error('Error adding to want-to-go list:', error);
         const backURL = req.header('Referer') || '/';
-        res.redirect(`${backURL}?err=An+error+occurred.`);
+        const urlObj = new URL(backURL, 'http://localhost:3000');
+        urlObj.search = '?err=An+error+occurred.';
+        res.redirect(urlObj.pathname + urlObj.search);
       }
     });
 
