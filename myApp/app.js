@@ -145,7 +145,7 @@ async function startServer() {
     console.log(`Connecting to MongoDB: ${MONGO_URL} | DB: ${DB_NAME}`);
     const client = await MongoClient.connect(MONGO_URL);
     const db = client.db(DB_NAME);
-    usersCol = db.collection('users');
+    usersCol = db.collection('myCollection');
     console.log('Successfully connected to MongoDB.');
 
     app.get('/wanttogo', ensureAuthenticated, async (req, res) => {
